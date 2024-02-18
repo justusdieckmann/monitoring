@@ -28,7 +28,7 @@ async function informError(failures) {
     await fetch(config.mattermosturl, {
         headers: {'Content-Type': 'application/json'},
         method: 'POST',
-        body: JSON.stringify({text: `The Learnweb seems to have some problem.\nThe last ${failures} out of ${QUICKCHECKS_AFTER_FAILURE + 1} connection attempts failed. :thisisfine:`})
+        body: JSON.stringify({text: `@channel The Learnweb seems to have some problem.\n*${failures}* out of the last ${QUICKCHECKS_AFTER_FAILURE + 1} connection attempts failed. :thisisfine:`})
     });
 }
 
