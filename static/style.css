@@ -1,0 +1,50 @@
+:root {
+    background: #3c3f41;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    padding: 16px;
+    font-weight: bold;
+    color: white;
+}
+
+.pane {
+    max-width: 1080px;
+    margin: auto;
+}
+
+.checks {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 8px 16px 0;
+}
+
+.p-2 {
+    padding: 16px !important;
+}
+
+.mr-2 {
+    margin-right: 1em;
+}
+
+.status, .check {
+    border-radius: 4px;
+    background: var(--bgcolor);
+    padding: 8px;
+}
+
+.status.degraded, .check.error {
+    --bgcolor: #ff5630;
+}
+
+.status.checking, .check.warning {
+    --bgcolor: #ff8B00;
+}
+
+.status.ok, .check.ok {
+    --bgcolor: #36b37e;
+}
+
+

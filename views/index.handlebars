@@ -1,0 +1,17 @@
+<html>
+<head>
+    <title>Learnweb Monitoring</title>
+    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+</head>
+<body>
+<div class="pane">
+    <h1 class="status {{status}} p-2">Learnweb Status: {{status}}</h1>
+    <div class="checks">
+        {{# checks }}
+            <div class="check {{class}}"><span class="mr-2">{{time}}</span>{{{text}}}</div>
+        {{/ checks }}
+    </div>
+</div>
+<body>
+</html>

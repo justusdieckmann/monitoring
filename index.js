@@ -1,80 +1,128 @@
-import fetch from 'node-fetch';
-import config from './config.json' with { type: 'json' };
+import express from 'express';
+import { engine } from 'express-handlebars';
+import _debug from 'debug';
+import logger from 'morgan';
+import {checks, status} from './monitoring.js';
 
-async function isLearnwebOnline() {
-    const request = await fetch('https://www.uni-muenster.de/LearnWeb/learnweb2/');
-    return request.ok;
-}
+const debug = _debug('monitoring');
 
-async function isUniMuensterOnline() {
-    const request = await fetch('https://www.uni-muenster.de/');
-    return request.ok;
-}
+const app = express();
 
-const QUICK_INTERVAL = 60 * 1000;
-const NORMAL_INTERVAL = 5 * 60 * 1000;
+// view engine setup
+app.engine('handlebars', engine());
+app.set('view engine', 'handlebars');
+app.set('views', './views');
 
-const QUICKCHECKS_AFTER_FAILURE = 9;
-const SUCCESSFUL_ATTEMPTS_FOR_NORMALITY = 10;
+app.use(logger('dev'));
+app.use(express.json());
 
-let checks = [];
+app.get('/', (req, res, next) => {
+    res.render('index', {
+        layout: false,
+        status: status,
+        checks: checks.toReversed().map((check) => {
+            const time = check.time.toTimeString().substring(0, 5);
+            let text = `Response code <b>${check.status}</b>`;
+            if (check.class === 'warning')
+                text += '<br> But uni page is also not reachable.';
+            return {
+                class: check.class,
+                time,
+                text
+            }
+        })
+    })
+})
 
-let status = 'ok';
-let remainingQuickchecks;
-let errorsInQuickCheck;
-let successfulAttempts;
+app.use('/', express.static('static'));
 
-async function informError(failures) {
-    await fetch(config.mattermosturl, {
-        headers: {'Content-Type': 'application/json'},
-        method: 'POST',
-        body: JSON.stringify({text: `The Learnweb seems to have some problem.\nThe last ${failures} out of ${QUICKCHECKS_AFTER_FAILURE + 1} connection attempts failed. :thisisfine:`})
-    });
-}
+// error handler
+app.use(function(err, req, res, next) {
+    // set locals, only providing error in development
+    res.locals.message = err.message;
+    res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-async function checkLearnweb(){
-    const now = new Date();
-    while (checks.length && (now - checks[0].time) > 1000 * 60 * 60 * 24) {
-        checks.shift();
+    // render the error page
+    res.status(err.status || 500);
+    res.render('error', {layout: false});
+});
+
+
+import http from 'http';
+
+const port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+const server = http.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+    const port = parseInt(val, 10);
+
+    if (isNaN(port)) {
+        // named pipe
+        return val;
     }
 
-    const weHaveAProblem = !await isLearnwebOnline() && await isUniMuensterOnline();
-    checks.push({error: weHaveAProblem, time: new Date()});
-
-    switch (status) {
-        case "ok":
-            if (weHaveAProblem) {
-                status = 'checking';
-                remainingQuickchecks = QUICKCHECKS_AFTER_FAILURE;
-                errorsInQuickCheck = 1;
-            }
-            break;
-        case "checking":
-            remainingQuickchecks -= 1;
-            if (weHaveAProblem) {
-                errorsInQuickCheck++;
-            }
-            if (remainingQuickchecks === 0) {
-                if (errorsInQuickCheck >= 2) {
-                    status = 'degraded';
-                    successfulAttempts = 0;
-                    await informError(errorsInQuickCheck);
-                } else {
-                    status = 'ok';
-                }
-            }
-            break;
-        case "degraded":
-            if (weHaveAProblem) {
-                successfulAttempts = 0;
-            } else {
-                successfulAttempts++;
-            }
-            if (successfulAttempts >= SUCCESSFUL_ATTEMPTS_FOR_NORMALITY) {
-                status = 'ok';
-            }
+    if (port >= 0) {
+        // port number
+        return port;
     }
-    setTimeout(checkLearnweb, remainingQuickchecks ? QUICK_INTERVAL : NORMAL_INTERVAL);
+
+    return false;
 }
 
-checkLearnweb().then();
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
+
+    var bind = typeof port === 'string'
+        ? 'Pipe ' + port
+        : 'Port ' + port;
+
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+        case 'EACCES':
+            console.error(bind + ' requires elevated privileges');
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(bind + ' is already in use');
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+    var addr = server.address();
+    var bind = typeof addr === 'string'
+        ? 'pipe ' + addr
+        : 'port ' + addr.port;
+    debug('Listening on ' + bind);
+}
