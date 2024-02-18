@@ -1,13 +1,15 @@
 import fetch from 'node-fetch';
 import config from './config.json' with { type: 'json' };
 
+const options = {headers: {'User-Agent': 'lw-monitoring/1.0 node-fetch'}};
+
 async function isLearnwebOnline() {
-    const request = await fetch('https://www.uni-muenster.de/LearnWeb/learnweb2/');
+    const request = await fetch('https://www.uni-muenster.de/LearnWeb/learnweb2/', options);
     return [request.ok, request.status];
 }
 
 async function isUniMuensterOnline() {
-    const request = await fetch('https://www.uni-muenster.de/');
+    const request = await fetch('https://www.uni-muenster.de/', options);
     return request.ok;
 }
 
