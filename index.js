@@ -22,13 +22,10 @@ app.get('/', (req, res, next) => {
         status: status,
         checks: checks.toReversed().map((check) => {
             const time = check.time.toTimeString().substring(0, 5);
-            let text = `Response code <b>${check.status}</b>`;
-            if (check.class === 'warning')
-                text += '<br> But uni page is also not reachable.';
             return {
                 class: check.class,
                 time,
-                text
+                text: check.status
             }
         })
     })
