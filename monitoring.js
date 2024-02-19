@@ -14,37 +14,42 @@ async function pageHasText(page, text) {
 }
 
 async function isLearnwebOnline() {
-    const request = await fetch('https://www.uni-muenster.de/LearnWeb/learnweb2/', options);
-    if (!request.ok) {
-        return {state: TEST_STATUS_ERROR, text: `HTTP response code ${request.status}`};
-    }
+    try {
+        const request = await fetch('https://www.uni-muenster.de/LearnWeb/learnweb2/', options);
+        if (!request.ok) {
+            return {state: TEST_STATUS_ERROR, text: `HTTP response code ${request.status}`};
+        }
 
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage()
-    if (config.sso) {
-        await page.goto('https://sso.uni-muenster.de/LearnWeb/learnweb2/');
-        await page.type('#httpd_username', config.lwusername);
-        await page.type('#httpd_password', config.lwpassword);
-        await page.click('input[type="submit"]');
-        if (await pageHasText(page, "Das Learnweb wird zur Zeit gewartet."))
-            return {state: TEST_STATUS_MAINTENANCE, text: "Maintenance Mode"};
-        await page.goto('https://sso.uni-muenster.de/LearnWeb/learnweb2/course/view.php?id=42106');
-    } else {
-        await page.goto('https://www.uni-muenster.de/LearnWeb/learnweb2/login/index.php');
-        if (await pageHasText(page, "Das Learnweb wird zur Zeit gewartet."))
-            return {state: TEST_STATUS_MAINTENANCE, text: "Maintenance Mode"};
-        await page.type('#username', config.lwusername);
-        await page.type('#password', config.lwpassword);
-        await page.click('#loginbtn');
-        await page.goto('https://www.uni-muenster.de/LearnWeb/learnweb2/course/view.php?id=42106');
-    }
-    const working = await pageHasText(page, "Lieber bot, alles funktioniert perfekt!");
-    await browser.close();
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage()
+        if (config.sso) {
+            await page.goto('https://sso.uni-muenster.de/LearnWeb/learnweb2/');
+            await page.type('#httpd_username', config.lwusername);
+            await page.type('#httpd_password', config.lwpassword);
+            await page.click('input[type="submit"]');
+            await page.waitForNetworkIdle();
+            if (await pageHasText(page, "Das Learnweb wird zur Zeit gewartet."))
+                return {state: TEST_STATUS_MAINTENANCE, text: "Maintenance Mode"};
+            await page.goto('https://sso.uni-muenster.de/LearnWeb/learnweb2/course/view.php?id=42106');
+        } else {
+            await page.goto('https://www.uni-muenster.de/LearnWeb/learnweb2/login/index.php');
+            if (await pageHasText(page, "Das Learnweb wird zur Zeit gewartet."))
+                return {state: TEST_STATUS_MAINTENANCE, text: "Maintenance Mode"};
+            await page.type('#username', config.lwusername);
+            await page.type('#password', config.lwpassword);
+            await page.click('#loginbtn');
+            await page.goto('https://www.uni-muenster.de/LearnWeb/learnweb2/course/view.php?id=42106');
+        }
+        const working = await pageHasText(page, "Lieber bot, alles funktioniert perfekt!");
+        browser.close().then();
 
-    if (working) {
-        return {state: TEST_STATUS_WORKING, text: 'Success'};
-    } else {
-        return {state: TEST_STATUS_ERROR, text: 'Test failed!'};
+        if (working) {
+            return {state: TEST_STATUS_WORKING, text: 'Success'};
+        } else {
+            return {state: TEST_STATUS_ERROR, text: 'Test failed!'};
+        }
+    } catch (e) {
+        return {state: TEST_STATUS_MAINTENANCE, text: 'Error: ' + e.toString()}
     }
 }
 
