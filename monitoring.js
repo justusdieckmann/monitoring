@@ -96,7 +96,7 @@ async function checkLearnweb(){
 
     const {state, text} = await isLearnwebOnline();
     checks.push({
-        class: ['error', 'warnung', 'ok'][state],
+        class: ['error', 'warning', 'ok'][state],
         status: text,
         time: new Date()
     });
