@@ -14,20 +14,21 @@ async function pageHasText(page, text) {
 }
 
 async function isLearnwebOnline() {
+    let uniOk = false;
     try {
-        const request = await fetch('https://www.uni-muenster.de/LearnWeb/learnweb2/', options);
-        if (!request.ok) {
-            return {state: TEST_STATUS_ERROR, text: `HTTP response code ${request.status}`};
-        }
-
         const browser = await puppeteer.launch();
-        const page = await browser.newPage()
+        const page = await browser.newPage();
+
+        try {
+            const response = await page.goto('https://www.uni-muenster.de/');
+            uniOk = response.ok();
+        } catch (e) {}
+
         if (config.sso) {
             await page.goto('https://sso.uni-muenster.de/LearnWeb/learnweb2/');
             await page.type('#httpd_username', config.lwusername);
             await page.type('#httpd_password', config.lwpassword);
             await page.click('input[type="submit"]');
-            await page.waitForNetworkIdle();
             if (await pageHasText(page, "Das Learnweb wird zur Zeit gewartet."))
                 return {state: TEST_STATUS_MAINTENANCE, text: "Maintenance Mode"};
             await page.goto('https://sso.uni-muenster.de/LearnWeb/learnweb2/course/view.php?id=42106');
@@ -46,10 +47,18 @@ async function isLearnwebOnline() {
         if (working) {
             return {state: TEST_STATUS_WORKING, text: 'Success'};
         } else {
-            return {state: TEST_STATUS_ERROR, text: 'Test failed!'};
+            if (uniOk) {
+                return {state: TEST_STATUS_ERROR, text: 'Test failed!'};
+            } else {
+                return {state: TEST_STATUS_MAINTENANCE, text: 'Test failed, but main page also unavailable'};
+            }
         }
     } catch (e) {
-        return {state: TEST_STATUS_MAINTENANCE, text: 'Error: ' + e.toString()}
+        if (uniOk) {
+            return {state: TEST_STATUS_ERROR, text: 'Error: ' + e.toString() + '\n' + e.stack}
+        } else {
+            return {state: TEST_STATUS_MAINTENANCE, text: 'Failed, but main page also unavailable (Error: ' + e.toString() + '\n' + e.stack + ')'}
+        }
     }
 }
 
